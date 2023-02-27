@@ -4,7 +4,7 @@
 # FileName:
 
 from config import conf
-from dao import poolDB, db
+from dao import poolDB, db, db_execption
 
 
 class Mongo:
@@ -29,18 +29,23 @@ class Mongo:
         :param kwargs:
         :return:
         """
+        raise_error = kwargs.pop('raise_error') if 'raise_error' in kwargs else True  # 是否扔出异常
+
+        res = {'result': None, 'success': True}
         with self.__conn as coon:
             try:
-                ok = True
-
                 cursor = coon[collection_name]
-                res = getattr(cursor, action)(*args, **kwargs)
+                result = getattr(cursor, action)(*args, **kwargs)
                 if action.lower().startswith('find'):   # 查询操作，必须在关闭游标前拿出结果
-                    res = list(res)
+                    result = list(result)
+                res['result'] = result
             except Exception as e:
-                ok = False
-                res = e
-        return res, ok
+                res['result'] = e
+                res['success'] = False
+                if raise_error:
+                    raise db_execption.DbException(e)
+
+        return res
 
 
 def execute(
@@ -63,7 +68,7 @@ def execute(
 
 
 if __name__ == '__main__':
-    # result, _ = execute('user', 'find', '', db_name='log')
-    # result, _ = execute('user', 'insert_many', [{'name': 'test_01'}], db_name='log').acknowledged
+    # result = execute('user', 'find', '', db_name='log')
+    # result = execute('user', 'insert_many', [{'name': 'test_01'}], db_name='log').acknowledged
     # print(result)
     ...

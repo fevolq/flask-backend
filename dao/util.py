@@ -21,8 +21,8 @@ def add_lock(lock_key, lock_value, db_name=None, timeout: int = 10, time_sleep: 
     :return:
     """
     while True:
-        lock_res, lock_ok = redisDB.execute('set', lock_key, lock_value, nx=True, ex=timeout, db_name=db_name)
-        if lock_res and lock_ok:
+        lock_res = redisDB.execute('set', lock_key, lock_value, nx=True, ex=timeout, db_name=db_name, raise_error=True)
+        if all(list(lock_res.values())):
             logging.info(f'锁键: {lock_key}, 锁值: {lock_value} 加锁成功')
             break
         logging.info(f'锁键: {lock_key}, 锁值: {lock_value} 等待加锁')

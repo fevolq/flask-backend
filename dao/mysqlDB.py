@@ -7,7 +7,7 @@ import json
 import logging
 
 from utils import DataEncoder, log_sls
-from dao import poolDB, db
+from dao import poolDB, db, db_execption
 from config import conf
 
 
@@ -23,12 +23,14 @@ class Mysql:
     def coon(self):
         return self.__conn
 
-    def execute(self, sql, args, to_json=True, log_key=None):
+    def execute(self, sql, args, **kwargs):
+        to_json = kwargs.pop('to_json') if 'to_json' in kwargs else True  # 是否进行json转换
+        raise_error = kwargs.pop('raise_error') if 'raise_error' in kwargs else True    # 是否扔出异常
+        log_key = kwargs.pop('log_key') if 'log_key' in kwargs else None
 
+        res = {'result': None, 'success': True}
         with self.__conn as conn:
             try:
-                ok = True
-
                 conn.begin()
                 cursor = conn.cursor()
                 sql = sql.replace('\'%s\'', '%s').strip()
@@ -46,39 +48,37 @@ class Mysql:
                     else:
                         result = cursor.execute(sql, args)
                 conn.commit()
-                res = result
+                res['result'] = result
             except Exception as e:
-                ok = False
-
                 conn.rollback()
-                res = e
-            finally:
-                try:
-                    cursor.close()
-                    conn.close()
-                except Exception:
-                    pass
+                res['success'] = False
+                res['result'] = e
+                if raise_error:
+                    raise db_execption.DbException(e)
 
-        return res, ok
+        return res
 
-    def execute_many(self, sql_with_args_list: list, to_json=True, log_key=None):
+    def execute_many(self, sql_with_args_list: list, **kwargs):
+        to_json = kwargs.pop('to_json') if 'to_json' in kwargs else True  # 是否进行json转换
+        raise_error = kwargs.pop('raise_error') if 'raise_error' in kwargs else True  # 是否扔出异常
+        log_key = kwargs.pop('log_key') if 'log_key' in kwargs else None
+
+        res = {'result': None, 'success': True}
         with self.__conn as conn:
             try:
-                ok = True
-
                 conn.begin()
                 cursor = conn.cursor()
-                res = [[]] * len(sql_with_args_list)
+                result = [[]] * len(sql_with_args_list)
                 for sql_with_args in sql_with_args_list:
                     sql = sql_with_args['sql'].replace('\'%s\'', '%s').strip()
                     args_list = sql_with_args.get('args', [])
                     logging_sql(sql, args_list, key=log_key)
                     if sql.startswith('SELECT'):
                         cursor.execute(sql, args_list)
-                        result = cursor.fetchall()
+                        result_ = cursor.fetchall()
                         if to_json:
-                            result = json.loads(json.dumps(result, cls=DataEncoder.MySQLEncoder))
-                        res[sql_with_args_list.index(sql_with_args)] = result
+                            result_ = json.loads(json.dumps(result_, cls=DataEncoder.MySQLEncoder))
+                        result[sql_with_args_list.index(sql_with_args)] = result_
                     else:
                         if not args_list:
                             res_line = cursor.execute(sql, args_list)
@@ -86,27 +86,23 @@ class Mysql:
                             res_line = cursor.executemany(sql, args_list)
                         else:
                             res_line = cursor.execute(sql, args_list)
-                        res[sql_with_args_list.index(sql_with_args)] = res_line
+                        result[sql_with_args_list.index(sql_with_args)] = res_line
                 conn.commit()
+                res['result'] = result
             except Exception as e:
-                ok = False
-
                 conn.rollback()
-                res = e
-            finally:
-                try:
-                    cursor.close()
-                    conn.close()
-                except Exception:
-                    pass
+                res['success'] = False
+                res['result'] = e
+                if raise_error:
+                    raise db_execption.DbException(e)
 
-        return res, ok
+        return res
 
 
 def execute(
     sql: str, args: list = [],
     db_name: str = None, db_conf: dict = None,
-    use_pool: bool = True, to_json: bool = True, log_key: str = None,
+    use_pool: bool = True, **kwargs,
 ):
     """
     单条sql语句
@@ -115,8 +111,6 @@ def execute(
     :param db_name: 指定库
     :param db_conf:数据库配置
     :param use_pool: 是否使用连接池
-    :param to_json: 是否需要进行json转换
-    :param log_key: 日志的标识键
     :return:
     """
     if db_name is None:
@@ -128,13 +122,13 @@ def execute(
             'user': conf.MYSQL_USER,
             'password': conf.MYSQL_PWD,
         }
-    return Mysql(db_name, db_conf, use_pool).execute(sql, args, to_json=to_json, log_key=log_key)
+    return Mysql(db_name, db_conf, use_pool).execute(sql, args, **kwargs)
 
 
 def execute_many(
     sql_with_args_list,
     db_name: str = None, db_conf: dict = None,
-    use_pool: bool = True, to_json: bool = True, log_key: str = None,
+    use_pool: bool = True, **kwargs
 ):
     """
     一个事务中的多条sql语句
@@ -142,8 +136,6 @@ def execute_many(
     :param db_name: 指定库
     :param db_conf:数据库配置
     :param use_pool: 是否使用连接池
-    :param to_json: 是否需要进行json转换
-    :param log_key: 日志的标识键
     :return:
     """
     if db_name is None:
@@ -155,7 +147,7 @@ def execute_many(
             'user': conf.MYSQL_USER,
             'password': conf.MYSQL_PWD,
         }
-    return Mysql(db_name, db_conf, use_pool).execute_many(sql_with_args_list, to_json=to_json, log_key=log_key)
+    return Mysql(db_name, db_conf, use_pool).execute_many(sql_with_args_list, **kwargs)
 
 
 def logging_sql(sql, args, key: str = None):
@@ -178,8 +170,10 @@ def logging_sql(sql, args, key: str = None):
 
 
 if __name__ == "__main__":
-    tmp_sql = 'show databases;'
-    tmp_res, _ = execute(tmp_sql, use_pool=True)
-    # tmp_res, _ = execute_many([{'sql': sql}], use_pool=use_pool)
+    ...
 
-    print(tmp_res)
+    # tmp_sql = 'show database;'
+    # tmp_res = execute(tmp_sql, use_pool=True)
+    # # tmp_res = execute_many([{'sql': sql}], use_pool=use_pool)
+    #
+    # print(tmp_res)
