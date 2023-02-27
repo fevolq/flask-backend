@@ -43,12 +43,12 @@ class LogSLS:
 
     @staticmethod
     def save_mongo(data):
-        mongoDB.execute(LogSLS.__project, 'insert_one', data, db_name='log_sls')
+        mongoDB.execute(LogSLS.__project, 'insert_one', data, db_name='log_sls', raise_error=False)
         ...
 
     @staticmethod
     def save_es(data):
-        esDB.execute(LogSLS.__project.lower(), 'index', document=data)
+        esDB.execute(LogSLS.__project.lower(), 'index', document=data, raise_error=False)
         ...
 
     def save(self, data):
