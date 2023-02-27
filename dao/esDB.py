@@ -4,7 +4,7 @@
 # FileName:
 
 from config import conf
-from dao import poolDB, db
+from dao import poolDB, db, db_execption
 
 
 class Elasticsearch:
@@ -28,15 +28,20 @@ class Elasticsearch:
         :param kwargs:
         :return:
         """
+        raise_error = kwargs.pop('raise_error') if 'raise_error' in kwargs else True  # 是否扔出异常
+
+        res = {'result': None, 'success': True}
         with self.__conn as coon:
             try:
-                ok = True
-
-                res = getattr(coon, action)(index=index_name, *args, **kwargs)
+                result = getattr(coon, action)(index=index_name, *args, **kwargs)
+                res['result'] = result
             except Exception as e:
-                ok = False
-                res = e
-        return res, ok
+                res['result'] = e
+                res['success'] = False
+                if raise_error:
+                    raise db_execption.DbException(e)
+
+        return res
 
 
 def execute(
@@ -56,6 +61,6 @@ def execute(
 
 
 if __name__ == '__main__':
-    # result, _ = execute('demo', 'index', {'name': 'test_01'})
+    # result = execute('demo', 'index', {'name': 'test_01'})
     # print(result)
     ...
