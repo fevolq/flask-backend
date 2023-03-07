@@ -3,7 +3,7 @@
 # CreateTime: 2022/10/27 16:54
 # FileName:
 
-from dao import poolDB, db, db_execption
+from dao import poolDB, db, db_exception
 from config import conf
 
 
@@ -31,7 +31,7 @@ class Redis:
                 res['result'] = e
                 res['success'] = False
                 if raise_error:
-                    raise db_execption.DbException(e)
+                    raise db_exception.DbException(e)
 
         return res
 
