@@ -126,7 +126,7 @@ def gen_wheres(table: Table, q: QueryBuilder, conditions: dict, args: list = Non
                 match = False
             elif op == 'LIKE':
                 q = q.where(table[field].like('%s'))
-                condition_op_value = [f'%{value}%' for value in condition_op_value]
+                condition_op_value = f'%{condition_op_value}%'
                 match = True
             elif op == 'IN':
                 condition_value_len = len(condition_op_value)
