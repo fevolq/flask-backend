@@ -6,8 +6,8 @@
 import json
 import logging
 
-from utils import DataEncoder, log_sls
-from dao import poolDB, db, db_execption
+from utils import DataEncoder
+from dao import poolDB, db, db_exception
 from config import conf
 
 
@@ -54,7 +54,7 @@ class Mysql:
                 res['success'] = False
                 res['result'] = e
                 if raise_error:
-                    raise db_execption.DbException(e)
+                    raise db_exception.DbException(e)
 
         return res
 
@@ -94,7 +94,7 @@ class Mysql:
                 res['success'] = False
                 res['result'] = e
                 if raise_error:
-                    raise db_execption.DbException(e)
+                    raise db_exception.DbException(e)
 
         return res
 
@@ -165,8 +165,8 @@ def logging_sql(sql, args, key: str = None):
     if key is not None:
         kwargs['key'] = key
 
-    # logging.info(f'sql: {sql}')
-    log_sls.info('sql', '执行sql', **kwargs)
+    logging.info(f'sql: {sql}')
+    # log_sls.info('sql', '执行sql', **kwargs)
 
 
 if __name__ == "__main__":
